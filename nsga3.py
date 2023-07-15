@@ -28,9 +28,13 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,) * NOBJ)
 creator.create("Individual", list, fitness=creator.FitnessMin)
 
 def uniform(low, up, size=None):
-    size = [s if s is not None else 1 for s in size]  # Replace None with 1
+    if size is None:
+        size = 1
+    elif isinstance(size, int):
+        size = [size]
     size = [int(s) for s in size]  # Convert size to integers
     return tf.random.uniform(shape=size, minval=low, maxval=up)
+
 
 
 
