@@ -1,7 +1,7 @@
+import tensorflow as tf
 import random
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from deap import base, creator, algorithms, tools
 from pymop.factory import get_problem
 
@@ -12,6 +12,7 @@ NDIM = NOBJ + K - 1
 P = 12
 
 def factorial(x):
+    import numpy as np
     return np.math.factorial(x)
 
 H = factorial(NOBJ + P - 1) / (factorial(P) * factorial(NOBJ - 1))
@@ -28,18 +29,10 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,) * NOBJ)
 creator.create("Individual", list, fitness=creator.FitnessMin)
 
 def uniform(low, up, size=None):
-    if size is None:
-        size = 1
-    elif isinstance(size, int):
-        size = [size]
-    size = [int(s) for s in size]  # Convert size to integers
     return tf.random.uniform(shape=size, minval=low, maxval=up)
 
-
-
-
 toolbox = base.Toolbox()
-toolbox.register("attr_float", uniform, BOUND_LOW, BOUND_UP, size=NDIM)
+toolbox.register("attr_float", uniform, BOUND_LOW, BOUND_UP, NDIM)
 toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.attr_float)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
@@ -51,9 +44,8 @@ toolbox.register("select", tools.selNSGA3, ref_points=ref_points)
 def main(seed=None):
     random.seed(seed)
     np.random.seed(seed)
-    tf.random.set_seed(seed)
-
     df = pd.DataFrame()
+    # Initialize statistics object
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean, axis=0)
     stats.register("std", np.std, axis=0)
@@ -64,38 +56,41 @@ def main(seed=None):
     logbook.header = "gen", "evals", "std", "min", "avg", "max"
 
     pop = toolbox.population(n=MU)
-    pop = tf.convert_to_tensor(pop)  # Convert to TensorFlow tensor
+    pop = tf.convert_to_tensor(pop)  # Convert pop to TensorFlow tensor
 
+    # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in pop if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
     for ind, fit in zip(invalid_ind, fitnesses):
         ind.fitness.values = fit
 
+    # Compile statistics about the population
     record = stats.compile(pop)
     logbook.record(gen=0, evals=len(invalid_ind), **record)
     print(logbook.stream)
 
+    # Begin the generational process
     for gen in range(1, NGEN):
         offspring = algorithms.varAnd(pop, toolbox, CXPB, MUTPB)
 
+        # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
+        # Select the next generation population from parents and offspring
         pop = toolbox.select(pop + offspring, MU)
-        pop = tf.convert_to_tensor(pop)  # Convert to TensorFlow tensor
+        pop = tf.convert_to_tensor(pop)  # Convert pop to TensorFlow tensor
 
         F = problem.evaluate(pop, return_values_of=["F"])
         new = pd.DataFrame({'gen': [gen], 'mean': F.mean(), 'min': F.min()})
         df = pd.concat([df, new])
-
+        # Compile statistics about the new population
         record = stats.compile(pop)
         logbook.record(gen=gen, evals=len(invalid_ind), **record)
         print(logbook.stream)
-
     df.to_csv('df.csv')
     return pop, logbook
 
-with tf.device('/GPU:0'):
-    pop, logbook = main(seed=1)
+pop, logbook = main(seed=1)
