@@ -28,8 +28,12 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,) * NOBJ)
 creator.create("Individual", list, fitness=creator.FitnessMin)
 
 def uniform(low, up, size=None):
-    size = tuple(int(s) for s in size)  # Convert size to integers
+    try:
+        size = tuple(int(s) for s in size)  # Convert size to integers
+    except TypeError:
+        pass
     return tf.random.uniform(shape=size, minval=low, maxval=up)
+
 
 toolbox = base.Toolbox()
 toolbox.register("attr_float", uniform, BOUND_LOW, BOUND_UP, size=NDIM)
