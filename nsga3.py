@@ -29,8 +29,7 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,) * NOBJ)
 creator.create("Individual", list, fitness=creator.FitnessMin)
 
 def uniform(low, up, size=None):
-    size = [s if s is not None else 1 for s in size]  # Replace None with 1
-    return tf.random.uniform(shape=size, minval=low, maxval=up)
+    return tf.random.uniform(shape=[size,1], minval=low, maxval=up)
 
 
 toolbox = base.Toolbox()
